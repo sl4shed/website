@@ -4,16 +4,13 @@ import "7.css/dist/7.css";
 export default {
   name: "Window",
   props: {
-    title: {
-      required: false,
-      type: String,
-      default: ""
-    },
-    active: {
-      required: true
-    }
+    title: { required: false, type: String, default: "" },
+    zIndex: { type: Number, default: 1 },
+    active: { required: true },
+    initialPosX: { type: Number, default: 0 },
+    initialPosY: { type: Number, default: 0 },
   },
-  emits: ["close", "focus"],
+  emits: ["close", "focus", "move"],
   mounted() {
     document.addEventListener("mousemove", this.mousemove);
   },
@@ -28,11 +25,11 @@ export default {
 
     mousemove(e) {
       if (this.dragging) {
-        this.posX += e.clientX - this.initialX;
-        this.posY += e.clientY - this.initialY;
-
-        this.initialX = e.clientX;
-        this.initialY = e.clientY;
+        this.posX += e.clientX - this.initialX
+        this.posY += e.clientY - this.initialY
+        this.initialX = e.clientX
+        this.initialY = e.clientY
+        this.$emit('move', { posX: this.posX, posY: this.posY })
       }
     },
 
@@ -53,11 +50,10 @@ export default {
   },
   data() {
     return {
-      posX: 0,
-      posY: 0,
+      posX: this.initialPosX,
+      posY: this.initialPosY,
       width: 300,
       height: 300,
-      zIndex: 0,
       maximized: false,
       dragging: false,
       initialX: 0,
@@ -70,11 +66,11 @@ export default {
 <template>
   <div class="window glass"
        :class="{ active: active }"
-       :style="`position: absolute;
-                left: ${ posX }px;
-                top: ${ posY }px;
-                user-select: none;
-                z-index: ${ zIndex };`"
+       :style="{position: 'absolute',
+                left: posX + 'px',
+                top: posY + 'px',
+                userSelect: 'none',
+                zIndex: zIndex + 5 }"
        ref="window"
        @mousedown="focus">
     <div class="title-bar" @mousedown="dragStart" @mouseup="dragEnd" ref="titleBar">
