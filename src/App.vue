@@ -3,16 +3,17 @@ import Wallpaper from "./assets/wallpaper.jpg"
 import Folder from "./assets/folder.png"
 import Window from "./components/Window.vue"
 import Icon from "./components/Icon.vue"
+import { writeFile, readFile, deleteFile, listFiles } from "./virtualfs.js"
 
 const ICONS = {
   folder: Folder,
 }
 
-const DEFAULT_ICONS = [
-  {name: "pepe", type: "folder", method: 'openWindow', row: 0, col: 0, dragging: false}
-]
+const DEFAULT_ICONS = []
 
 function hydrateIcons(icons, vm) {
+
+
   return icons.map(icon => ({
     ...icon,
     src: ICONS[icon.type] || Folder,
@@ -46,7 +47,7 @@ export default {
       deep: true,
       handler(icons) {
         localStorage.setItem('icons', JSON.stringify(
-            icons.map(({ id, name, type, col, row }) => ({ id, name, type, col, row }))
+            icons.map(({ id, name, type, col, row, method }) => ({ id, name, type, col, row, method }))
         ))
       }
     },
