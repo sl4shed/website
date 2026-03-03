@@ -7,6 +7,7 @@ import Text from "./assets/text.png"
 import { writeFile, readFile, deleteFile, listFiles } from "./virtualfs.js"
 import { markRaw } from 'vue'
 import MdReader from "./components/MdReader.vue"
+import { componentRegistry } from "./componentRegistry.js"
 
 const ICONS = {
   folder: Folder,
@@ -14,6 +15,18 @@ const ICONS = {
 }
 
 const DEFAULT_ICONS = []
+
+function serializeWindow(win) {
+  return {
+    ...win,
+    content: {
+      componentName: Object.keys(componentRegistry).find(
+        key => componentRegistry[key] === win.content.component
+      ),
+      props: win.content.props
+    }
+  }
+}
 
 function hydrateIcons(icons, vm) {
   listFiles().forEach(file => {
@@ -37,13 +50,19 @@ export default {
   },
   created() {
     this.icons = hydrateIcons(this._savedIcons || DEFAULT_ICONS, this)
-    writeFile('welcome.txt', 'pleaplegpalefplsdfplgpleagplsdc');
   },
   data() {
     const savedIcons = JSON.parse(localStorage.getItem('icons') || 'null')
-    const savedWindows = JSON.parse(localStorage.getItem('windows') || 'null')
+    const savedWindows = JSON.parse(localStorage.getItem('windows') || '[]')
+    const windows = savedWindows.map(win => ({
+      ...win,
+      content: {
+        component: componentRegistry[win.content.componentName],
+        props: win.content.props
+      }
+    }))
     return {
-      windows: savedWindows || [],
+      windows: windows || [],
       activeWindow: null,
       icons: [],
       selectedIcon: null,
@@ -63,9 +82,7 @@ export default {
     windows: {
       deep: true,
       handler(windows) {
-        localStorage.setItem('windows', JSON.stringify(
-            windows.map(({ id, title, posX, posY, content }) => ({ id, title, posX: posX || 0, posY: posY || 0, content }))
-        ))
+        localStorage.setItem('windows', JSON.stringify(windows.map(serializeWindow)))
       }
     }
   },
