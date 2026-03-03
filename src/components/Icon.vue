@@ -3,11 +3,7 @@ export default {
   name: "Icon",
   emits: ["changePosition", "select", "setDragging"],
   props: {
-    icon: { required: true },
-    name: { type: String, required: true },
-    callback: { type: Function, required: true },
-    col: { type: Number, required: true },
-    row: { type: Number, required: true },
+    registry: { type: Object, required: true },
     cellW: { type: Number, default: 90 },
     cellH: { type: Number, default: 90 },
     selected: { type: Boolean, default: false }
@@ -26,8 +22,8 @@ export default {
   methods: {
     click(e) {
       this.$emit("select")
-      this.dragOffsetX = e.clientX - this.col * this.cellW
-      this.dragOffsetY = e.clientY - this.row * this.cellH
+      this.dragOffsetX = e.clientX - this.registry.col * this.cellW
+      this.dragOffsetY = e.clientY - this.registry.row * this.cellH
       this.startX = e.clientX
       this.startY = e.clientY
       window.addEventListener('mousemove', this.mouseMove)
@@ -64,7 +60,8 @@ export default {
 
     doubleclick() {
       console.log("calling callback");
-      this.callback();
+      console.log(this.registry);
+      this.registry.callback(this.registry);
     },
   }
 }
@@ -72,13 +69,13 @@ export default {
 
 <template>
   <div class="icon"
-       :class="{ selected, dragging }"
+       :class="{ selected, dragging: this.registry.dragging }"
        @mousedown="click"
        @dblclick="doubleclick"
-       :style="dragging ? { left: liveX + 'px', top: liveY + 'px', position: 'fixed', zIndex: 9999 } : {}"
+       :style="registry.dragging ? { left: liveX + 'px', top: liveY + 'px', position: 'fixed', zIndex: 9999 } : {}"
        ref="icon">
-    <img :src="icon"  :alt="name" />
-    <p>{{ name }}</p>
+    <img :src="registry.src"  :alt="registry.name" />
+    <p>{{ registry.name }}</p>
   </div>
 </template>
 

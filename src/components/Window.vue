@@ -83,7 +83,7 @@ export default {
     <div class="window-body has-space"
          :style="`min-width: ${ width }px;
                   min-height: ${ height }px;`">
-      <p>sour patch kids are pretty yummy - european</p>
+      <slot></slot>
     </div>
   </div>
 </template>

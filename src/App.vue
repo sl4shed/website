@@ -5,6 +5,8 @@ import Window from "./components/Window.vue"
 import Icon from "./components/Icon.vue"
 import Text from "./assets/text.png"
 import { writeFile, readFile, deleteFile, listFiles } from "./virtualfs.js"
+import { markRaw } from 'vue'
+import MdReader from "./components/MdReader.vue"
 
 const ICONS = {
   folder: Folder,
@@ -15,7 +17,7 @@ const DEFAULT_ICONS = []
 
 function hydrateIcons(icons, vm) {
   listFiles().forEach(file => {
-    if (!icons.some(icon => icon.id === file)) {
+    if (!icons.some(icon => icon.id === file.created)) {
       icons.push({ id: file.created, name: file.name, type: 'text', col: 0, row: 0, method: 'openWindow' })
     }
   })
@@ -24,17 +26,18 @@ function hydrateIcons(icons, vm) {
     ...icon,
     src: ICONS[icon.type] || Folder,
     dragging: false,
-    callback: () => vm[icon.method]()
+    callback: (registry) => vm[icon.method](registry)
   }))
 }
 
 export default {
-  components: { Window, Icon },
+  components: { Window, Icon, MdReader },
   provide() {
     return { windows: this.windows }
   },
   created() {
     this.icons = hydrateIcons(this._savedIcons || DEFAULT_ICONS, this)
+    writeFile('welcome.txt', 'pleaplegpalefplsdfplgpleagplsdc');
   },
   data() {
     const savedIcons = JSON.parse(localStorage.getItem('icons') || 'null')
@@ -61,14 +64,31 @@ export default {
       deep: true,
       handler(windows) {
         localStorage.setItem('windows', JSON.stringify(
-            windows.map(({ id, title, posX, posY }) => ({ id, title, posX: posX || 0, posY: posY || 0 }))
+            windows.map(({ id, title, posX, posY, content }) => ({ id, title, posX: posX || 0, posY: posY || 0, content }))
         ))
       }
     }
   },
   methods: {
-    openWindow(win) {
-      this.windows.push({ id: Date.now(), title: 'New Window' })
+    openWindow(icon) {
+      if (icon.type == "text") {
+        const file = readFile(icon.name);
+        console.log(file);
+        this.windows.push({
+            id: Date.now(),
+            title: icon.name,
+            content: {
+              component: markRaw(MdReader),
+              props: { content: file.content }
+            }
+        });
+      } else {
+        this.windows.push({
+          id: Date.now(),
+          title: icon.name,
+          content: `<p>No preview available for ${icon.name}</p>`
+        })
+      }
     },
 
     focusWindow(win) {
@@ -125,18 +145,19 @@ export default {
             @close="closeWindow(win)"
             @focus="focusWindow(win)"
             @move="win.posX = $event.posX; win.posY = $event.posY"
-    />
+    >
+      <template v-if="win.content && win.content.component">
+        <component :is="win.content.component" v-bind="win.content.props" />
+      </template>
+      <div v-else-if="win.content" v-html="win.content"></div>
+    </Window>
   </div>
 
   <div class="icons">
     <Icon
         v-for="icon in icons"
         :key="icon.id"
-        :name="icon.name"
-        :icon="icon.src"
-        :callback="icon.callback"
-        :col="icon.col"
-        :row="icon.row"
+        :registry="icon"
         :style="!icon.dragging ? { left: icon.col * 90 + 'px', top: icon.row * 90 + 'px', position: 'absolute' } : {}"
         :selected="selectedIcon === icon.id"
         @select="selectedIcon = icon.id"
