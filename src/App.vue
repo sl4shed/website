@@ -3,16 +3,22 @@ import Wallpaper from "./assets/wallpaper.jpg"
 import Folder from "./assets/folder.png"
 import Window from "./components/Window.vue"
 import Icon from "./components/Icon.vue"
+import Text from "./assets/text.png"
 import { writeFile, readFile, deleteFile, listFiles } from "./virtualfs.js"
 
 const ICONS = {
   folder: Folder,
+  text: Text,
 }
 
 const DEFAULT_ICONS = []
 
 function hydrateIcons(icons, vm) {
-
+  listFiles().forEach(file => {
+    if (!icons.some(icon => icon.id === file)) {
+      icons.push({ id: file.created, name: file.name, type: 'text', col: 0, row: 0, method: 'openWindow' })
+    }
+  })
 
   return icons.map(icon => ({
     ...icon,
