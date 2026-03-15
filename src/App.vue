@@ -8,6 +8,7 @@ import { writeFile, readFile, deleteFile, listFiles } from "./virtualfs.js"
 import { markRaw } from 'vue'
 import MdReader from "./components/MdReader.vue"
 import { componentRegistry } from "./componentRegistry.js"
+import RightClickMenu from "./components/RightClickMenu.vue"
 
 const ICONS = {
   folder: Folder,
@@ -44,12 +45,14 @@ function hydrateIcons(icons, vm) {
 }
 
 export default {
-  components: { Window, Icon, MdReader },
+  components: { Window, Icon, MdReader, RightClickMenu },
   provide() {
     return { windows: this.windows }
   },
   created() {
+    writeFile("test.md", "Hello world\n# Hello\n# sugi pula")
     this.icons = hydrateIcons(this._savedIcons || DEFAULT_ICONS, this)
+    document.addEventListener('contextmenu', event => event.preventDefault());
   },
   data() {
     const savedIcons = JSON.parse(localStorage.getItem('icons') || 'null')
@@ -67,7 +70,11 @@ export default {
       icons: [],
       selectedIcon: null,
       Folder,
-      _savedIcons: savedIcons
+      _savedIcons: savedIcons,
+
+      rightClicking: false,
+      rightClickingPos: {x: 0, y: 0},
+      rightClickingTarget: "desktop"
     }
   },
   watch: {
@@ -75,7 +82,7 @@ export default {
       deep: true,
       handler(icons) {
         localStorage.setItem('icons', JSON.stringify(
-            icons.map(({ id, name, type, col, row, method }) => ({ id, name, type, col, row, method }))
+          icons.map(({ id, name, type, col, row, method }) => ({ id, name, type, col, row, method }))
         ))
       }
     },
@@ -92,12 +99,12 @@ export default {
         const file = readFile(icon.name);
         console.log(file);
         this.windows.push({
-            id: Date.now(),
-            title: icon.name,
-            content: {
-              component: markRaw(MdReader),
-              props: { content: file.content }
-            }
+          id: Date.now(),
+          title: icon.name,
+          content: {
+            component: markRaw(MdReader),
+            props: { content: file.content }
+          }
         });
       } else {
         this.windows.push({
@@ -145,24 +152,50 @@ export default {
         }
       }
       // holy fucking nest
+    },
+
+    generalClick(event) {
+      if (event.button == 0) { // left click
+        this.selectedIcon = null
+        this.rightClicking = false
+      } else if (event.button == 2) { // right click
+        if (event.target.className == "windows" && this.rightClicking == false) {
+          event.preventDefault();
+          this.rightClicking = true;
+          this.rightClickingTarget = "desktop";
+          this.rightClickingPos = {x: event.clientX, y: event.clientY}
+        } else {
+          event.preventDefault();
+          this.rightClicking = false;
+        }
+      }
+    },
+
+    // todo redo this entire right click detection thing
+    iconsClick(event) {
+      console.log("yeah")
+      if (event.button == 2) { // right click
+        if (this.rightClicking == false) { // basically i decided that if youre right clickign on icons youre basically always clicking on an icon so yeah
+          console.log("shut the fuck up")
+          event.preventDefault();
+          this.rightClicking = true;
+          this.rightClickingTarget = "icon";
+          this.rightClickingPos = {x: event.clientX, y: event.clientY}
+        } else {
+          event.preventDefault();
+          this.rightClicking = false;
+        }
+      }
     }
   }
 }
 </script>
 
 <template>
-  <div class="windows" @mousedown="selectedIcon = null">
-    <Window v-for="(win, i) in windows"
-            :key="win.id"
-            :title="win.title"
-            :zIndex="i + 10"
-            :active="win === activeWindow"
-            :initialPosX="win.posX || 0"
-            :initialPosY="win.posY || 0"
-            @close="closeWindow(win)"
-            @focus="focusWindow(win)"
-            @move="win.posX = $event.posX; win.posY = $event.posY"
-    >
+  <div class="windows" @mousedown="generalClick">
+    <Window v-for="(win, i) in windows" :key="win.id" :title="win.title" :zIndex="i + 10" :active="win === activeWindow"
+      :initialPosX="win.posX || 0" :initialPosY="win.posY || 0" @close="closeWindow(win)" @focus="focusWindow(win)"
+      @move="win.posX = $event.posX; win.posY = $event.posY">
       <template v-if="win.content && win.content.component">
         <component :is="win.content.component" v-bind="win.content.props" />
       </template>
@@ -170,22 +203,19 @@ export default {
     </Window>
   </div>
 
-  <div class="icons">
-    <Icon
-        v-for="icon in icons"
-        :key="icon.id"
-        :registry="icon"
-        :style="!icon.dragging ? { left: icon.col * 90 + 'px', top: icon.row * 90 + 'px', position: 'absolute' } : {}"
-        :selected="selectedIcon === icon.id"
-        @select="selectedIcon = icon.id"
-        @changePosition="onIconMove(icon, $event)"
-        @setDragging="icon.dragging = $event"
-    />
+  <div class="icons" @mousedown="iconsClick">
+    <Icon v-for="icon in icons" :key="icon.id" :registry="icon"
+      :style="!icon.dragging ? { left: icon.col * 90 + 'px', top: icon.row * 90 + 'px', position: 'absolute' } : {}"
+      :selected="selectedIcon === icon.id" @select="selectedIcon = icon.id" @changePosition="onIconMove(icon, $event)"
+      @setDragging="icon.dragging = $event" />
   </div>
+
+  <RightClickMenu v-if="rightClicking" :target="rightClickingTarget" :targetInfo="{ filename: 'test.txt' }" :clipboardInfo="{}" :position="rightClickingPos" />
 </template>
 
 <style lang="scss">
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
 }
